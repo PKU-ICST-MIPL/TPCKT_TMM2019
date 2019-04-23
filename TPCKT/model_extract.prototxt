@@ -1,0 +1,1547 @@
+name: "TripleNet"
+layer {
+  name: "wiki_img_pool5"
+  type: "Data"
+  top: "wiki_img_pool5"
+  data_param {
+    source: "wiki_train_pool5/" #Set your path
+    batch_size: 64
+    backend: LMDB
+  }
+  include: { phase: TEST }
+}
+
+layer {
+  name: "similarity"
+  type: "DummyData"
+  top: "similarity"
+  dummy_data_param {
+    data_filler {
+      type: "constant"
+      value: 1
+    }
+    num: 64
+    channels: 1
+    height: 1
+    width: 1
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "wiki_txt_data"
+  type: "Data"
+  top: "wiki_txt_data"
+  top: "wiki_label"
+  data_param {
+    source: "lmdb_train/" #Set your path
+    batch_size: 64
+    backend: LMDB
+  }
+  include: { phase: TEST }
+}
+
+
+# --------------------XmediaNet DATA------------------------------
+layer {
+  name: "xmedia_img_data"
+  type: "ImageData"
+  top: "xmedia_img_data"
+  top: "xmedia_img_label"
+  transform_param {
+    mirror: false
+    crop_size: 224
+  }
+  image_data_param {
+    source: "train_img.txt" #Set your path
+    batch_size: 64
+    shuffle: false
+    root_folder: "image/" #Set your path
+  }
+  include: { phase: TEST }
+}
+
+layer {
+  name: "xmedia_data_silence"
+  type: "Silence"
+  bottom: "xmedia_img_data"
+}
+
+layer {
+  name: "xmedia_img_pool5"
+  type: "Data"
+  top: "xmedia_img_pool5"
+  data_param {
+    source: "xmedianet_train_pool5/" #Set your path
+    batch_size: 64
+    backend: LMDB
+  }
+  include: { phase: TEST }
+}
+
+layer {
+  name: "xmedia_txt_data"
+  type: "Data"
+  top: "xmedia_txt_data"
+  top: "xmedia_txt_label"
+  data_param {
+    source: "lmdb_train/"  #Set your path
+    batch_size: 64
+    backend: LMDB
+  }
+  include: { phase: TEST }
+}
+# ---------------------------------------------------------- fc6 of target
+
+layer {
+  name: "wiki_img_fc6"
+  type: "InnerProduct"
+  bottom: "wiki_img_pool5"
+  top: "wiki_img_fc6"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "wiki_img_fc6/bn"
+  type: "BatchNorm"
+  bottom: "wiki_img_fc6"
+  top: "wiki_img_fc6/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_img_relu6"
+  type: "ReLU"
+  bottom: "wiki_img_fc6/bn"
+  top: "wiki_img_fc6/bn"
+}
+
+
+layer {
+  name: "wiki_img_fc7"
+  type: "InnerProduct"
+  bottom: "wiki_img_fc6/bn"
+  top: "wiki_img_fc7"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "wiki_img_fc7/bn"
+  type: "BatchNorm"
+  bottom: "wiki_img_fc7"
+  top: "wiki_img_fc7/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_img_relu7"
+  type: "ReLU"
+  bottom: "wiki_img_fc7/bn"
+  top: "wiki_img_fc7/bn"
+}
+
+# ---------------------------------------------------------- textNet
+
+layer {
+  name: "wiki_txt_data/bn"
+  type: "BatchNorm"
+  bottom: "wiki_txt_data"
+  top: "wiki_txt_data/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_txt_data/scale"
+  type: "Scale"
+  bottom: "wiki_txt_data/bn"
+  top: "wiki_txt_data/scale"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  scale_param {
+    bias_term: true
+  }
+}
+layer {
+  name: "wiki_txt_fc6"
+  type: "InnerProduct"
+  bottom: "wiki_txt_data/scale"
+  top: "wiki_txt_fc6"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "wiki_txt_fc6/bn"
+  type: "BatchNorm"
+  bottom: "wiki_txt_fc6"
+  top: "wiki_txt_fc6/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_txt_relu6"
+  type: "ReLU"
+  bottom: "wiki_txt_fc6/bn"
+  top: "wiki_txt_fc6/bn"
+}
+layer {
+  name: "wiki_txt_fc7"
+  type: "InnerProduct"
+  bottom: "wiki_txt_fc6/bn"
+  top: "wiki_txt_fc7"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "wiki_txt_fc7/bn"
+  type: "BatchNorm"
+  bottom: "wiki_txt_fc7"
+  top: "wiki_txt_fc7/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_txt_relu7"
+  type: "ReLU"
+  bottom: "wiki_txt_fc7/bn"
+  top: "wiki_txt_fc7/bn"
+}
+
+# ---------------------------------------------------------- mergeNet
+
+
+layer {
+  name: "concat_fc7"
+  type: "Concat"
+  bottom: "wiki_img_fc7/bn"
+  bottom: "wiki_txt_fc7/bn"
+  top: "wiki_fc7_concat"
+  concat_param {
+    concat_dim: 0
+  }
+}
+layer {
+  name: "wiki_fc8"
+  type: "InnerProduct"
+  bottom: "wiki_fc7_concat"
+  top: "wiki_fc8"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "wiki_fc8/bn"
+  type: "BatchNorm"
+  bottom: "wiki_fc8"
+  top: "wiki_fc8/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_relu8"
+  type: "ReLU"
+  bottom: "wiki_fc8/bn"
+  top: "wiki_fc8/bn"
+}
+layer {
+  name: "wiki_fc9"
+  type: "InnerProduct"
+  bottom: "wiki_fc8/bn"
+  top: "wiki_fc9"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "wiki_fc9/bn"
+  type: "BatchNorm"
+  bottom: "wiki_fc9"
+  top: "wiki_fc9/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_relu9"
+  type: "ReLU"
+  bottom: "wiki_fc9/bn"
+  top: "wiki_fc9/bn"
+}
+layer {
+  name: "wiki_fc10"
+  type: "InnerProduct"
+  bottom: "wiki_fc9/bn"
+  top: "wiki_fc10"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 10
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "slice_fc10"
+  type: "Slice"
+  bottom: "wiki_fc10"
+  top: "wiki_img_fc10"
+  top: "wiki_txt_fc10"
+  slice_param {
+    slice_dim: 0
+  }
+}
+
+# ---------------------------------------------------------- Xmedia imgnet
+
+layer {
+  name: "xmedia_img_fc6"
+  type: "InnerProduct"
+  bottom: "xmedia_img_pool5"
+  top: "xmedia_img_fc6"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "gaussian"
+      std: 0.005
+    }
+    bias_filler {
+      type: "constant"
+      value: 1.0
+    }
+  }
+}
+layer {
+  name: "xmedia_img_fc6/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_img_fc6"
+  top: "xmedia_img_fc6/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_img_relu6"
+  type: "ReLU"
+  bottom: "xmedia_img_fc6/bn"
+  top: "xmedia_img_fc6/bn"
+}
+layer {
+  name: "xmedia_img_fc7"
+  type: "InnerProduct"
+  bottom: "xmedia_img_fc6/bn"
+  top: "xmedia_img_fc7"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "gaussian"
+      std: 0.005
+    }
+    bias_filler {
+      type: "constant"
+      value: 1.0
+    }
+  }
+}
+layer {
+  name: "xmedia_img_fc7/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_img_fc7"
+  top: "xmedia_img_fc7/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_img_relu7"
+  type: "ReLU"
+  bottom: "xmedia_img_fc7/bn"
+  top: "xmedia_img_fc7/bn"
+}
+# ---------------------------------------------------------- Xmedia txtnet
+layer {
+  name: "xmedia_txt_data/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_txt_data"
+  top: "xmedia_txt_data/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_txt_data/scale"
+  type: "Scale"
+  bottom: "xmedia_txt_data/bn"
+  top: "xmedia_txt_data/scale"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  scale_param {
+    bias_term: true
+  }
+}
+layer {
+  name: "xmedia_txt_fc6"
+  type: "InnerProduct"
+  bottom: "xmedia_txt_data/scale"
+  top: "xmedia_txt_fc6"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "xmedia_txt_fc6/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_txt_fc6"
+  top: "xmedia_txt_fc6/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_txt_relu6"
+  type: "ReLU"
+  bottom: "xmedia_txt_fc6/bn"
+  top: "xmedia_txt_fc6/bn"
+}
+layer {
+  name: "xmedia_txt_fc7"
+  type: "InnerProduct"
+  bottom: "xmedia_txt_fc6/bn"
+  top: "xmedia_txt_fc7"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "xmedia_txt_fc7/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_txt_fc7"
+  top: "xmedia_txt_fc7/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_txt_relu7"
+  type: "ReLU"
+  bottom: "xmedia_txt_fc7/bn"
+  top: "xmedia_txt_fc7/bn"
+}
+# ---------------------------------------------------------- xmedia mergeNet
+
+layer {
+  name: "xmedia_concat_fc7"
+  type: "Concat"
+  bottom: "xmedia_img_fc7/bn"
+  bottom: "xmedia_txt_fc7/bn"
+  top: "xmedia_fc7_concat"
+  concat_param {
+    concat_dim: 0
+  }
+}
+layer {
+  name: "xmedia_fc8"
+  type: "InnerProduct"
+  bottom: "xmedia_fc7_concat"
+  top: "xmedia_fc8"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "xmedia_fc8/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_fc8"
+  top: "xmedia_fc8/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_relu8"
+  type: "ReLU"
+  bottom: "xmedia_fc8/bn"
+  top: "xmedia_fc8/bn"
+}
+layer {
+  name: "xmedia_fc9"
+  type: "InnerProduct"
+  bottom: "xmedia_fc8/bn"
+  top: "xmedia_fc9"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "xmedia_fc9/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_fc9"
+  top: "xmedia_fc9/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_relu9"
+  type: "ReLU"
+  bottom: "xmedia_fc9/bn"
+  top: "xmedia_fc9/bn"
+}
+layer {
+  name: "xmedia_fc10"
+  type: "InnerProduct"
+  bottom: "xmedia_fc9/bn"
+  top: "xmedia_fc10"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 200
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "slice_fc10"
+  type: "Slice"
+  bottom: "xmedia_fc10"
+  top: "xmedia_img_fc10"
+  top: "xmedia_txt_fc10"
+  slice_param {
+    slice_dim: 0
+  }
+}
+
+# ---------------------------------------------------------- accuracy
+
+
+layer {
+  name: "wiki_img_accuracy"
+  type: "Accuracy"
+  bottom: "wiki_img_fc10"
+  bottom: "wiki_label"
+  top: "wiki_img_accuracy"
+}
+
+layer {
+  name: "wiki_txt_accuracy"
+  type: "Accuracy"
+  bottom: "wiki_txt_fc10"
+  bottom: "wiki_label"
+  top: "wiki_txt_accuracy"
+}
+layer {
+  name: "xmedia_img_accuracy"
+  type: "Accuracy"
+  bottom: "xmedia_img_fc10"
+  bottom: "xmedia_img_label"
+  top: "xmedia_img_accuracy"
+}
+layer {
+  name: "xmedia_txt_accuracy"
+  type: "Accuracy"
+  bottom: "xmedia_txt_fc10"
+  bottom: "xmedia_txt_label"
+  top: "xmedia_txt_accuracy"
+}
+# ---------------------------------------------------------- softmax loss
+
+layer {
+  name: "wiki_img_softmax_loss"
+  type: "SoftmaxWithLoss"
+  bottom: "wiki_img_fc10"
+  bottom: "wiki_label"
+  top: "wiki_img_softmax_loss"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "wiki_txt_loss"
+  type: "SoftmaxWithLoss"
+  bottom: "wiki_txt_fc10"
+  bottom: "wiki_label"
+  top: "wiki_txt_loss"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "xmedia_img_softmax_loss"
+  type: "SoftmaxWithLoss"
+  bottom: "xmedia_img_fc10"
+  bottom: "xmedia_img_label"
+  top: "xmedia_img_softmax_loss"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "xmedia_txt_loss"
+  type: "SoftmaxWithLoss"
+  bottom: "xmedia_txt_fc10"
+  bottom: "xmedia_txt_label"
+  top: "xmedia_txt_loss"
+  include: { phase: TRAIN }
+}
+
+# ---------------------------------------------------------- domain label by dkl
+layer {
+  name: "xmedia_domain_label"
+  type: "DummyData"
+  top: "xmedia_domain_label"
+  dummy_data_param {
+    data_filler {
+      type: "constant"
+      value: 1
+    }
+    num: 64
+    channels: 1
+    height: 1
+    width: 1
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "wiki_domain_label"
+  type: "DummyData"
+  top: "wiki_domain_label"
+  dummy_data_param {
+    data_filler {
+      type: "constant"
+      value: 0
+    }
+    num: 64
+    channels: 1
+    height: 1
+    width: 1
+  }
+  include: { phase: TRAIN }
+}
+
+layer{
+  name: "domain_label"
+  type:"Concat"
+  bottom: "xmedia_domain_label"
+  bottom: "wiki_domain_label"
+  top: "domain_label"
+  concat_param{
+    concat_dim: 0
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "xmedia_domain_label128"
+  type: "DummyData"
+  top: "xmedia_domain_label128"
+  dummy_data_param {
+    data_filler {
+      type: "constant"
+      value: 1
+    }
+    num: 128
+    channels: 1
+    height: 1
+    width: 1
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "wiki_domain_label128"
+  type: "DummyData"
+  top: "wiki_domain_label128"
+  dummy_data_param {
+    data_filler {
+      type: "constant"
+      value: 0
+    }
+    num: 128
+    channels: 1
+    height: 1
+    width: 1
+  }
+  include: { phase: TRAIN }
+}
+
+layer{
+  name: "domain_label128"
+  type:"Concat"
+  bottom: "xmedia_domain_label128"
+  bottom: "wiki_domain_label128"
+  top: "domain_label128"
+  concat_param{
+    concat_dim: 0
+  }
+  include: { phase: TRAIN }
+}
+
+# ---------------------------------------------------------- mergenet by dkl
+
+layer {
+	name: "xmedia_wiki_txt_merge_fc7"
+	type: "Concat"
+	bottom: "xmedia_txt_fc7/bn"
+	bottom: "wiki_txt_fc7/bn"
+	top: "xmedia_wiki_txt_merge_fc7/bn"
+	concat_param{
+		concat_dim: 0
+	}
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "xmedia_wiki_img_merge_fc7"
+  type: "Concat"
+  bottom: "xmedia_img_fc7/bn"
+  bottom: "wiki_img_fc7/bn"
+  top: "xmedia_wiki_img_merge_fc7/bn"
+  concat_param{
+    concat_dim: 0
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "xmedia_wiki_merge_fc9"
+  type: "Concat"
+  bottom: "xmedia_fc9/bn"
+  bottom: "wiki_fc9/bn"
+  top: "xmedia_wiki_merge_fc9/bn"
+  concat_param{
+    concat_dim: 0
+  }
+  include: { phase: TRAIN }
+}
+
+# ---------------------------------------------------------- Gradient reversal by dkl
+
+layer {
+	name: "txt_grl"
+	type: "GradientScaler"
+	bottom: "xmedia_wiki_txt_merge_fc7/bn"
+  top: "txt_grl"
+	gradient_scaler_param {
+    lower_bound: 0.0
+    upper_bound: 100000.0
+    alpha: -0.1
+    max_iter: 5000
+	}
+	include: { phase: TRAIN }
+}
+
+layer {
+  name: "img_grl"
+  type: "GradientScaler"
+  bottom: "xmedia_wiki_img_merge_fc7/bn"
+  top: "img_grl"
+  gradient_scaler_param {
+    lower_bound: 0.0
+    upper_bound: 100000.0
+    alpha: -0.1
+    max_iter: 5000
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "common_grl"
+  type: "GradientScaler"
+  bottom: "xmedia_wiki_merge_fc9/bn"
+  top: "common_grl"
+  gradient_scaler_param {
+    lower_bound: 0.0
+    upper_bound: 100000.0
+    alpha: -0.1
+    max_iter: 5000
+  }
+  include: { phase: TRAIN }
+}
+
+# ----------------------------------------------------------- Domain Classifer by dkl
+
+layer {
+	name: "txt_dc_fc1"
+	type: "InnerProduct"
+	bottom: "txt_grl"
+	top: "txt_dc_fc1"
+	param {
+		lr_mult: 0.001
+		decay_mult: 1
+	}
+	param {
+		lr_mult: 0.002
+		decay_mult: 0
+	}
+	inner_product_param {
+		num_output: 1024
+		weight_filler {
+			type: "msra"
+		}
+		bias_filler {
+			type: "constant"
+			value: 0.0
+		}
+	}
+	include: { phase: TRAIN }
+}
+
+layer {
+	name: "txt_dc_relu1"
+	type: "ReLU"
+	bottom: "txt_dc_fc1"
+	top: "txt_dc_fc1"
+	include: { phase: TRAIN }
+}
+
+layer {
+	name: "txt_dc_fc2"
+	type: "InnerProduct"
+	bottom: "txt_dc_fc1"
+	top: "txt_dc_fc2"
+	param {
+		lr_mult: 0.001
+		decay_mult: 1
+	}
+	param {
+		lr_mult: 0.002
+		decay_mult: 0
+	}
+	inner_product_param {
+		num_output: 1024
+		weight_filler {
+			type: "msra"
+		}
+		bias_filler {
+			type: "constant"
+			value: 0.0
+		}
+	}
+	include: { phase: TRAIN }
+}
+
+layer {
+	name: "txt_dc_relu2"
+	type: "ReLU"
+	bottom: "txt_dc_fc2"
+	top: "txt_dc_fc2"
+	include: { phase: TRAIN }
+}
+
+layer {
+	name: "txt_dc_fc3"
+	type: "InnerProduct"
+	bottom: "txt_dc_fc2"
+	top: "txt_dc_fc3"
+	param {
+		lr_mult: 0.001
+		decay_mult: 1
+		name: "dc_conv3_w"
+	}
+	param {
+		lr_mult: 0.002
+		decay_mult: 0
+		name: "dc_conv3_b"
+	}
+	inner_product_param {
+		num_output: 1
+		weight_filler {
+			type: "msra"
+		}
+		bias_filler {
+			type: "constant"
+			value: 0.0
+		}
+	}
+	include: { phase: TRAIN }
+}
+
+layer {
+  name: "img_dc_fc1"
+  type: "InnerProduct"
+  bottom: "img_grl"
+  top: "img_dc_fc1"
+  param {
+    lr_mult: 0.001
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 0.002
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "img_dc_relu1"
+  type: "ReLU"
+  bottom: "img_dc_fc1"
+  top: "img_dc_fc1"
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "img_dc_fc2"
+  type: "InnerProduct"
+  bottom: "img_dc_fc1"
+  top: "img_dc_fc2"
+  param {
+    lr_mult: 0.001
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 0.002
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "img_dc_relu2"
+  type: "ReLU"
+  bottom: "img_dc_fc2"
+  top: "img_dc_fc2"
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "img_dc_fc3"
+  type: "InnerProduct"
+  bottom: "img_dc_fc2"
+  top: "img_dc_fc3"
+  param {
+    lr_mult: 0.001
+    decay_mult: 1
+    name: "dc_conv3_w"
+  }
+  param {
+    lr_mult: 0.002
+    decay_mult: 0
+    name: "dc_conv3_b"
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "common_dc_fc1"
+  type: "InnerProduct"
+  bottom: "common_grl"
+  top: "common_dc_fc1"
+  param {
+    lr_mult: 0.001
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 0.002
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "common_dc_relu1"
+  type: "ReLU"
+  bottom: "common_dc_fc1"
+  top: "common_dc_fc1"
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "common_dc_fc2"
+  type: "InnerProduct"
+  bottom: "common_dc_fc1"
+  top: "common_dc_fc2"
+  param {
+    lr_mult: 0.001
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 0.002
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "common_dc_relu2"
+  type: "ReLU"
+  bottom: "common_dc_fc2"
+  top: "common_dc_fc2"
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "common_dc_fc3"
+  type: "InnerProduct"
+  bottom: "common_dc_fc2"
+  top: "common_dc_fc3"
+  param {
+    lr_mult: 0.001
+    decay_mult: 1
+    name: "dc_conv3_w"
+  }
+  param {
+    lr_mult: 0.002
+    decay_mult: 0
+    name: "dc_conv3_b"
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+  include: { phase: TRAIN }
+}
+
+# ---------------------------------------------------------- cross-modal loss of fc6 fc7 and fc8
+
+layer {
+  name: "fc6_contrastive_loss_wiki" 
+  type: "ContrastiveLoss" 
+  bottom: "wiki_img_fc6/bn" 
+  bottom: "wiki_txt_fc6/bn"
+  bottom: "similarity"
+  top: "fc6_contrastive_loss_wiki"
+  loss_weight: 0.0001
+  include: { phase: TRAIN }
+}
+layer {
+  name: "fc7_contrastive_loss_wiki" 
+  type: "ContrastiveLoss" 
+  bottom: "wiki_img_fc7/bn" 
+  bottom: "wiki_txt_fc7/bn"
+  bottom: "similarity"
+  top: "fc7_contrastive_loss_wiki"
+  loss_weight: 0.0001
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "fc6_contrastive_loss_xmedia" 
+  type: "ContrastiveLoss" 
+  bottom: "xmedia_img_fc6/bn" 
+  bottom: "xmedia_txt_fc6/bn"
+  bottom: "similarity"
+  top: "fc6_contrastive_loss_xmedia"
+  loss_weight: 0.0001
+  include: { phase: TRAIN }
+}
+layer {
+  name: "fc7_contrastive_loss_xmedia" 
+  type: "ContrastiveLoss" 
+  bottom: "xmedia_img_fc7/bn" 
+  bottom: "xmedia_txt_fc7/bn"
+  bottom: "similarity"
+  top: "fc7_contrastive_loss_xmedia"
+  loss_weight: 0.0001
+  include: { phase: TRAIN }
+}
+
+# ------------------------------------------ domain classifier loss by dkl
+layer {
+	name: "txt_dc_loss"
+	type: "EuclideanLoss"
+	bottom: "txt_dc_fc3"
+	bottom: "domain_label"
+	top: "txt_dc_loss"
+	loss_weight: 0.005
+	include: { phase: TRAIN }
+}
+
+layer {
+  name: "img_dc_loss"
+  type: "EuclideanLoss"
+  bottom: "img_dc_fc3"
+  bottom: "domain_label"
+  top: "img_dc_loss"
+  loss_weight: 0.005
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "common_dc_loss"
+  type: "EuclideanLoss"
+  bottom: "common_dc_fc3"
+  bottom: "domain_label128"
+  top: "common_dc_loss"
+  loss_weight: 0.05
+  include: { phase: TRAIN }
+}
+
+# ------------------------------------------ layer used to extract features by dkl
+layer{
+  name: "slice_wiki_fc9"
+  type: "Slice"
+  bottom: "wiki_fc9/bn"
+  top: "wiki_img_fc9/bn"
+  top: "wiki_txt_fc9/bn"
+  slice_param{
+    slice_dim: 0
+  }
+}
+
+layer{
+  name: "slice_xmedia_fc9"
+  type: "Slice"
+  bottom: "xmedia_fc9/bn"
+  top: "xmedia_img_fc9/bn"
+  top: "xmedia_txt_fc9/bn"
+  slice_param{
+    slice_dim: 0
+  }
+}
+
+layer{
+  name: "wiki_img_feature"
+  type: "Softmax"
+  bottom: "wiki_img_fc9/bn"
+  top: "wiki_img_feature"
+}
+
+layer{
+  name: "wiki_txt_feature"
+  type: "Softmax"
+  bottom: "wiki_txt_fc9/bn"
+  top: "wiki_txt_feature"
+}
+
+layer{
+  name: "xmedia_img_feature"
+  type: "Softmax"
+  bottom: "xmedia_img_fc9/bn"
+  top: "xmedia_img_feature"
+}
+
+layer{
+  name: "xmedia_txt_feature"
+  type: "Softmax"
+  bottom: "xmedia_txt_fc9/bn"
+  top: "xmedia_txt_feature"
+}
+

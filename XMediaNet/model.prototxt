@@ -1,0 +1,589 @@
+name: "TripleNet"
+
+
+# --------------------XmediaNet DATA------------------------------
+layer {
+  name: "xmedia_img_data"
+  type: "ImageData"
+  top: "xmedia_img_data"
+  top: "xmedia_img_label"
+  transform_param {
+    mirror: false
+    crop_size: 224
+  }
+  image_data_param {
+    source: "train_img.txt" #Set your path
+    batch_size: 64
+    shuffle: false
+    root_folder: "image/"  #Set your path
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "xmedia_img_data"
+  type: "ImageData"
+  top: "xmedia_img_data"
+  top: "xmedia_img_label"
+  transform_param {
+    mirror: false
+    crop_size: 224
+  }
+  image_data_param {
+    source: "test_img.txt"  #Set your path
+    batch_size: 20
+    shuffle: false
+    root_folder: "image/"  #Set your path
+  }
+  include: { phase: TEST }
+}
+layer {
+  name: "xmedia_data_silence"
+  type: "Silence"
+  bottom: "xmedia_img_data"
+}
+
+layer {
+  name: "xmedia_img_pool5"
+  type: "Data"
+  top: "xmedia_img_pool5"
+  data_param {
+    source: "xmedianet_train_pool5/"  #Set your path
+    batch_size: 64
+    backend: LMDB
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "xmedia_img_pool5"
+  type: "Data"
+  top: "xmedia_img_pool5"
+  data_param {
+    source: "xmedianet_test_pool5/"  #Set your path
+    batch_size: 20
+    backend: LMDB
+  }
+  include: { phase: TEST }
+}
+
+layer {
+  name: "similarity"
+  type: "DummyData"
+  top: "similarity"
+  dummy_data_param {
+    data_filler {
+      type: "constant"
+      value: 1
+    }
+    num: 64
+    channels: 1
+    height: 1
+    width: 1
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "xmedia_txt_data"
+  type: "Data"
+  top: "xmedia_txt_data"
+  top: "xmedia_txt_label"
+  data_param {
+    source: "lmdb_train/"  #Set your path
+    batch_size:64
+    backend: LMDB
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "xmedia_txt_data"
+  type: "Data"
+  top: "xmedia_txt_data"
+  top: "xmedia_txt_label"
+  data_param {
+    source: "lmdb_test/"  #Set your path
+    batch_size: 20
+    backend: LMDB
+  }
+  include: { phase: TEST }
+}
+
+
+# ---------------------------------------------------------- fc6 of target
+
+layer {
+  name: "xmedia_img_fc6"
+  type: "InnerProduct"
+  bottom: "xmedia_img_pool5"
+  top: "xmedia_img_fc6"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "xmedia_img_fc6/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_img_fc6"
+  top: "xmedia_img_fc6/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_img_relu6"
+  type: "ReLU"
+  bottom: "xmedia_img_fc6/bn"
+  top: "xmedia_img_fc6/bn"
+}
+
+
+layer {
+  name: "xmedia_img_fc7"
+  type: "InnerProduct"
+  bottom: "xmedia_img_fc6/bn"
+  top: "xmedia_img_fc7"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "xmedia_img_fc7/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_img_fc7"
+  top: "xmedia_img_fc7/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_img_relu7"
+  type: "ReLU"
+  bottom: "xmedia_img_fc7/bn"
+  top: "xmedia_img_fc7/bn"
+}
+
+# ---------------------------------------------------------- textNet
+
+layer {
+  name: "xmedia_txt_data/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_txt_data"
+  top: "xmedia_txt_data/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_txt_data/scale"
+  type: "Scale"
+  bottom: "xmedia_txt_data/bn"
+  top: "xmedia_txt_data/scale"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  scale_param {
+    bias_term: true
+  }
+}
+layer {
+  name: "xmedia_txt_fc6"
+  type: "InnerProduct"
+  bottom: "xmedia_txt_data/scale"
+  top: "xmedia_txt_fc6"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "xmedia_txt_fc6/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_txt_fc6"
+  top: "xmedia_txt_fc6/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_txt_relu6"
+  type: "ReLU"
+  bottom: "xmedia_txt_fc6/bn"
+  top: "xmedia_txt_fc6/bn"
+}
+layer {
+  name: "xmedia_txt_fc7"
+  type: "InnerProduct"
+  bottom: "xmedia_txt_fc6/bn"
+  top: "xmedia_txt_fc7"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "xmedia_txt_fc7/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_txt_fc7"
+  top: "xmedia_txt_fc7/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_txt_relu7"
+  type: "ReLU"
+  bottom: "xmedia_txt_fc7/bn"
+  top: "xmedia_txt_fc7/bn"
+}
+
+# ---------------------------------------------------------- mergeNet
+
+
+layer {
+  name: "xmedia_concat_fc7"
+  type: "Concat"
+  bottom: "xmedia_img_fc7/bn"
+  bottom: "xmedia_txt_fc7/bn"
+  top: "xmedia_fc7_concat"
+  concat_param {
+    concat_dim: 0
+  }
+}
+layer {
+  name: "xmedia_fc8"
+  type: "InnerProduct"
+  bottom: "xmedia_fc7_concat"
+  top: "xmedia_fc8"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "xmedia_fc8/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_fc8"
+  top: "xmedia_fc8/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_relu8"
+  type: "ReLU"
+  bottom: "xmedia_fc8/bn"
+  top: "xmedia_fc8/bn"
+}
+layer {
+  name: "xmedia_fc9"
+  type: "InnerProduct"
+  bottom: "xmedia_fc8/bn"
+  top: "xmedia_fc9"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "xmedia_fc9/bn"
+  type: "BatchNorm"
+  bottom: "xmedia_fc9"
+  top: "xmedia_fc9/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "xmedia_relu9"
+  type: "ReLU"
+  bottom: "xmedia_fc9/bn"
+  top: "xmedia_fc9/bn"
+}
+layer {
+  name: "xmedia_fc10"
+  type: "InnerProduct"
+  bottom: "xmedia_fc9/bn"
+  top: "xmedia_fc10"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 200
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "slice_xmedia_fc10"
+  type: "Slice"
+  bottom: "xmedia_fc10"
+  top: "xmedia_img_fc10"
+  top: "xmedia_txt_fc10"
+  slice_param {
+    slice_dim: 0
+  }
+}
+
+# ---------------------------------------------------------- accuracy
+
+
+layer {
+  name: "xmedia_img_accuracy"
+  type: "Accuracy"
+  bottom: "xmedia_img_fc10"
+  bottom: "xmedia_img_label"
+  top: "xmedia_img_accuracy"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "xmedia_img_accuracy"
+  type: "Accuracy"
+  bottom: "xmedia_img_fc10"
+  bottom: "xmedia_img_label"
+  top: "xmedia_img_accuracy"
+  include: { phase: TEST }
+}
+
+layer {
+  name: "xmedia_txt_accuracy"
+  type: "Accuracy"
+  bottom: "xmedia_txt_fc10"
+  bottom: "xmedia_txt_label"
+  top: "xmedia_txt_accuracy"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "xmedia_txt_accuracy"
+  type: "Accuracy"
+  bottom: "xmedia_txt_fc10"
+  bottom: "xmedia_txt_label"
+  top: "xmedia_txt_accuracy"
+  include: { phase: TEST }
+}
+
+# ---------------------------------------------------------- softmax loss
+
+layer {
+  name: "xmedia_img_softmax_loss"
+  type: "SoftmaxWithLoss"
+  bottom: "xmedia_img_fc10"
+  bottom: "xmedia_img_label"
+  top: "xmedia_img_softmax_loss"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "xmedia_txt_softmax_loss"
+  type: "SoftmaxWithLoss"
+  bottom: "xmedia_txt_fc10"
+  bottom: "xmedia_txt_label"
+  top: "xmedia_txt_softmax_loss"
+  include: { phase: TRAIN }
+}
+
+# ---------------------------------------------------------- cross-modal loss of fc6 fc7 and fc8
+
+layer {
+  name: "fc6_contrastive_loss_wiki" 
+  type: "ContrastiveLoss" 
+  bottom: "xmedia_img_fc6/bn" 
+  bottom: "xmedia_txt_fc6/bn"
+  bottom: "similarity"
+  top: "fc6_contrastive_loss_wiki"
+  loss_weight: 0.0001
+  include: { phase: TRAIN }
+}
+layer {
+  name: "fc7_contrastive_loss_wiki" 
+  type: "ContrastiveLoss" 
+  bottom: "xmedia_img_fc7/bn" 
+  bottom: "xmedia_txt_fc7/bn"
+  bottom: "similarity"
+  top: "fc7_contrastive_loss_wiki"
+  loss_weight: 0.0001
+  include: { phase: TRAIN }
+}
+

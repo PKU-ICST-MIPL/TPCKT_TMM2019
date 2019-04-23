@@ -1,0 +1,552 @@
+name: "TripleNet"
+layer {
+  name: "wiki_img_pool5"
+  type: "Data"
+  top: "wiki_img_pool5"
+  data_param {
+    source: "wiki_train_pool5/"  #Set your path
+    batch_size: 64
+    backend: LMDB
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "wiki_img_pool5"
+  type: "Data"
+  top: "wiki_img_pool5"
+  data_param {
+    source: "wiki_test_pool5/"  #Set your path
+    batch_size: 64
+    backend: LMDB
+  }
+  include: { phase: TEST }
+}
+
+
+layer {
+  name: "similarity"
+  type: "DummyData"
+  top: "similarity"
+  dummy_data_param {
+    data_filler {
+      type: "constant"
+      value: 1
+    }
+    num: 64
+    channels: 1
+    height: 1
+    width: 1
+  }
+  include: { phase: TRAIN }
+}
+
+
+layer {
+  name: "wiki_txt_data"
+  type: "Data"
+  top: "wiki_txt_data"
+  top: "wiki_label"
+  data_param {
+    source: "lmdb_train/"  #Set your path
+    batch_size: 64
+    backend: LMDB
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "wiki_txt_data"
+  type: "Data"
+  top: "wiki_txt_data"
+  top: "wiki_label"
+  data_param {
+    source: "lmdb_test/"  #Set your path
+    batch_size: 64
+    backend: LMDB
+  }
+  include: { phase: TEST }
+}
+
+
+# ---------------------------------------------------------- fc6 of target
+
+layer {
+  name: "wiki_img_fc6"
+  type: "InnerProduct"
+  bottom: "wiki_img_pool5"
+  top: "wiki_img_fc6"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "wiki_img_fc6/bn"
+  type: "BatchNorm"
+  bottom: "wiki_img_fc6"
+  top: "wiki_img_fc6/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_img_relu6"
+  type: "ReLU"
+  bottom: "wiki_img_fc6/bn"
+  top: "wiki_img_fc6/bn"
+}
+
+
+layer {
+  name: "wiki_img_fc7"
+  type: "InnerProduct"
+  bottom: "wiki_img_fc6/bn"
+  top: "wiki_img_fc7"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "wiki_img_fc7/bn"
+  type: "BatchNorm"
+  bottom: "wiki_img_fc7"
+  top: "wiki_img_fc7/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_img_relu7"
+  type: "ReLU"
+  bottom: "wiki_img_fc7/bn"
+  top: "wiki_img_fc7/bn"
+}
+
+# ---------------------------------------------------------- textNet
+
+layer {
+  name: "wiki_txt_data/bn"
+  type: "BatchNorm"
+  bottom: "wiki_txt_data"
+  top: "wiki_txt_data/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_txt_data/scale"
+  type: "Scale"
+  bottom: "wiki_txt_data/bn"
+  top: "wiki_txt_data/scale"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  scale_param {
+    bias_term: true
+  }
+}
+layer {
+  name: "wiki_txt_fc6"
+  type: "InnerProduct"
+  bottom: "wiki_txt_data/scale"
+  top: "wiki_txt_fc6"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "wiki_txt_fc6/bn"
+  type: "BatchNorm"
+  bottom: "wiki_txt_fc6"
+  top: "wiki_txt_fc6/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_txt_relu6"
+  type: "ReLU"
+  bottom: "wiki_txt_fc6/bn"
+  top: "wiki_txt_fc6/bn"
+}
+layer {
+  name: "wiki_txt_fc7"
+  type: "InnerProduct"
+  bottom: "wiki_txt_fc6/bn"
+  top: "wiki_txt_fc7"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "wiki_txt_fc7/bn"
+  type: "BatchNorm"
+  bottom: "wiki_txt_fc7"
+  top: "wiki_txt_fc7/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_txt_relu7"
+  type: "ReLU"
+  bottom: "wiki_txt_fc7/bn"
+  top: "wiki_txt_fc7/bn"
+}
+
+# ---------------------------------------------------------- mergeNet
+
+
+layer {
+  name: "concat_fc7"
+  type: "Concat"
+  bottom: "wiki_img_fc7/bn"
+  bottom: "wiki_txt_fc7/bn"
+  top: "wiki_fc7_concat"
+  concat_param {
+    concat_dim: 0
+  }
+}
+layer {
+  name: "wiki_fc8"
+  type: "InnerProduct"
+  bottom: "wiki_fc7_concat"
+  top: "wiki_fc8"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "wiki_fc8/bn"
+  type: "BatchNorm"
+  bottom: "wiki_fc8"
+  top: "wiki_fc8/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_relu8"
+  type: "ReLU"
+  bottom: "wiki_fc8/bn"
+  top: "wiki_fc8/bn"
+}
+layer {
+  name: "wiki_fc9"
+  type: "InnerProduct"
+  bottom: "wiki_fc8/bn"
+  top: "wiki_fc9"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "wiki_fc9/bn"
+  type: "BatchNorm"
+  bottom: "wiki_fc9"
+  top: "wiki_fc9/bn"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  batch_norm_param {
+    moving_average_fraction: 0.9
+  }
+}
+layer {
+  name: "wiki_relu9"
+  type: "ReLU"
+  bottom: "wiki_fc9/bn"
+  top: "wiki_fc9/bn"
+}
+layer {
+  name: "wiki_fc10"
+  type: "InnerProduct"
+  bottom: "wiki_fc9/bn"
+  top: "wiki_fc10"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 10
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.0
+    }
+  }
+}
+layer {
+  name: "slice_fc10"
+  type: "Slice"
+  bottom: "wiki_fc10"
+  top: "wiki_img_fc10"
+  top: "wiki_txt_fc10"
+  slice_param {
+    slice_dim: 0
+  }
+}
+
+
+# ---------------------------------------------------------- accuracy
+
+
+layer {
+  name: "wiki_img_accuracy"
+  type: "Accuracy"
+  bottom: "wiki_img_fc10"
+  bottom: "wiki_label"
+  top: "wiki_img_accuracy"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "wiki_img_accuracy"
+  type: "Accuracy"
+  bottom: "wiki_img_fc10"
+  bottom: "wiki_label"
+  top: "wiki_img_accuracy"
+  include: { phase: TEST }
+}
+
+layer {
+  name: "wiki_txt_accuracy"
+  type: "Accuracy"
+  bottom: "wiki_txt_fc10"
+  bottom: "wiki_label"
+  top: "wiki_txt_accuracy"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "wiki_txt_accuracy"
+  type: "Accuracy"
+  bottom: "wiki_txt_fc10"
+  bottom: "wiki_label"
+  top: "wiki_txt_accuracy"
+  include: { phase: TEST }
+}
+
+# ---------------------------------------------------------- softmax loss
+
+layer {
+  name: "wiki_img_softmax_loss"
+  type: "SoftmaxWithLoss"
+  bottom: "wiki_img_fc10"
+  bottom: "wiki_label"
+  top: "wiki_img_softmax_loss"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "wiki_txt_loss"
+  type: "SoftmaxWithLoss"
+  bottom: "wiki_txt_fc10"
+  bottom: "wiki_label"
+  top: "wiki_txt_loss"
+  include: { phase: TRAIN }
+}
+
+
+# ---------------------------------------------------------- cross-modal loss of fc6 fc7 and fc8
+
+layer {
+  name: "fc6_contrastive_loss_wiki" 
+  type: "ContrastiveLoss" 
+  bottom: "wiki_img_fc6/bn" 
+  bottom: "wiki_txt_fc6/bn"
+  bottom: "similarity"
+  top: "fc6_contrastive_loss_wiki"
+  loss_weight: 0.0001
+  include: { phase: TRAIN }
+}
+layer {
+  name: "fc7_contrastive_loss_wiki" 
+  type: "ContrastiveLoss" 
+  bottom: "wiki_img_fc7/bn" 
+  bottom: "wiki_txt_fc7/bn"
+  bottom: "similarity"
+  top: "fc7_contrastive_loss_wiki"
+  loss_weight: 0.0001
+  include: { phase: TRAIN }
+}
+
+
+

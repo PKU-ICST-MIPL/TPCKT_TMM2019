@@ -1,0 +1,16 @@
+test_iter: 7
+test_interval: 50
+base_lr: 0.01
+display: 100
+max_iter: 100
+lr_policy: "fixed"
+power: 1
+momentum: 0.9
+weight_decay: 0.0005
+snapshot: 500
+snapshot_prefix: "/Wiki/Baseline_Single"  #Set your path
+random_seed: 0
+net: "./model_Single_wiki.prototxt"
+test_initialization: false
+iter_size: 16 
+
